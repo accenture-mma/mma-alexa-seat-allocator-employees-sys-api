@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+    <apikit:config name="mma-alexa-seat-allocator-employees-sys-api-config" api="resource::92c38b33-c941-42cb-abb0-6e0da6122ce0:mma-alexa-seat-allocator-employees-sys-api:1.0.0:raml:zip:mma-alexa-seat-allocator-employees-sys-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="mma-alexa-seat-allocator-employees-sys-api-main">
+        <http:listener config-ref="http-listener-config" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <logger level="INFO" doc:name="Start Logger" doc:id="835ca641-fc03-4ab7-9450-82b2a6931ce7" message='"Entering Seat Allocator Empoyees System API"'/>
+		<ee:transform doc:name="Prepare logMessage" doc:id="be157f17-9026-456c-b14f-e733f4ac059f">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "START: Inbound HTTP Request",
+	content: {
+		remoteAddress: message.attributes.remoteAddress,
+		method: message.attributes.method,
+		requestPath: message.attributes.requestPath,
+		headers: {
+			client_id: message.attributes.headers.client_id,
+			client_secret: message.attributes.headers.client_secret
+		},
+		queryParams: message.attributes.queryParams
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <apikit:router config-ref="mma-alexa-seat-allocator-employees-sys-api-config" />
+        <ee:transform doc:name="Update logMessage" doc:id="f0fb8071-d00f-4fd5-9f2d-b720a98a9031">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logMessage"><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "END: Outbound HTTP Response",
+	content: {
+		httpStatus: vars.httpStatus
+	}
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+    </flow>
+    <flow name="get:\employments:mma-alexa-seat-allocator-employees-sys-api-config">
+        <flow-ref doc:name="Flow Ref: get-employments-main-flow" doc:id="4d14a231-b9ba-434a-aa1f-3a723445e326" name="get-employments-main-flow" />
+    </flow>
+    <flow name="get:\teams:mma-alexa-seat-allocator-employees-sys-api-config">
+        <flow-ref doc:name="Flow Ref: get-teams-main-flow" doc:id="58522685-696a-4eed-bf96-d94b9134c90b" name="get-teams-main-flow" />
+    </flow>
+    <flow name="get:\employments\(id):mma-alexa-seat-allocator-employees-sys-api-config">
+        <ee:transform>
+            <ee:variables>
+                <ee:set-variable variableName="employmentId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.uriParams.'id']]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Ref: get-employment-by-id-main-flow" doc:id="f5899e96-0157-4fda-b90b-55db19794469" name="get-employment-by-id-main-flow" />
+    </flow>
+    <flow name="get:\employees:mma-alexa-seat-allocator-employees-sys-api-config">
+        <ee:transform doc:id="24971e94-7055-42be-a3cd-4de5e5aabbe2">
+            <ee:variables>
+                <ee:set-variable variableName="employeeId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.uriParams.'id']]></ee:set-variable>
+				<ee:set-variable variableName="workEmail" ><![CDATA[%dw 2.0
+output application/java
+---
+message.attributes.queryParams.workEmail default null]]></ee:set-variable>
+            
+</ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Ref: get-employee-by-id-main-flow" doc:id="1f65eb89-6d90-4027-809a-941e6afb3abc" name="get-employee-by-id-main-flow" />
+    </flow>
+    <flow name="get:\employees\(id):mma-alexa-seat-allocator-employees-sys-api-config">
+        <ee:transform doc:id="e2c9cb80-7949-45f2-969d-2437dc06822d">
+            <ee:variables>
+                <ee:set-variable variableName="employeeId"><![CDATA[%dw 2.0
+output application/java
+---
+attributes.uriParams.'id']]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <flow-ref doc:name="Flow Ref: get-employee-by-id-main-flow" doc:id="0c4c1523-e14d-4357-babc-1879e125a087" name="get-employee-by-id-main-flow" />
+    </flow>
+</mule>
